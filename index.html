@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DB Blueprint — Visual ERD Designer for JetBrains IDEs</title>
+  <meta name="description" content="Draw database schemas on a canvas inside IntelliJ IDEA. Import from live databases, preview migration SQL, and apply incremental changes — without leaving your IDE.">
+  <meta property="og:title" content="DB Blueprint — Visual ERD Designer for JetBrains IDEs">
+  <meta property="og:description" content="Draw database schemas on a canvas inside IntelliJ. Import from live databases, preview migration SQL, apply incremental changes.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0D1117;
+      --bg2:      #161B22;
+      --bg3:      #1C2128;
+      --border:   #30363D;
+      --blue:     #1F6FEB;
+      --blue-dim: #1158C7;
+      --green:    #3FB950;
+      --amber:    #E3B341;
+      --text:     #F0F6FF;
+      --text-dim: #8B949E;
+      --text-mid: #C9D1D9;
+      --mono:     'JetBrains Mono', 'Fira Code', monospace;
+      --sans:     'Inter', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    .nav-left { display: flex; align-items: center; gap: 16px; }
+    .nav-logo {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+    }
+    .nav-logo-icon {
+      width: 26px;
+      height: 26px;
+      display: block;
+      flex-shrink: 0;
+    }
+    .nav-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(227,179,65,0.1);
+      border: 1px solid rgba(227,179,65,0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--amber);
+      white-space: nowrap;
+    }
+    .nav-badge-dot {
+      width: 5px; height: 5px;
+      background: var(--amber);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a {
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-cta {
+      background: var(--blue);
+      color: var(--text) !important;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .nav-cta:hover { background: var(--blue-dim) !important; text-decoration: none !important; }
+
+    @media (max-width: 600px) {
+      .nav-hide-sm { display: none; }
+    }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 72px 24px 0;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 56px;
+      align-items: center;
+    }
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; padding: 48px 20px 0; gap: 36px; }
+    }
+
+    h1 {
+      font-size: clamp(28px, 3.6vw, 42px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, #1F6FEB, #58A6FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 17px;
+      color: var(--text-mid);
+      line-height: 1.65;
+      margin-bottom: 32px;
+      max-width: 420px;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .hero-meta {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+    .hero-meta span { color: var(--green); }
+
+    .hero-screenshot-wrap img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      display: block;
+    }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+      padding: 11px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover { background: var(--blue-dim); text-decoration: none; transform: translateY(-1px); }
+    .btn-primary-lg {
+      font-size: 16px;
+      padding: 14px 28px;
+    }
+    .btn-secondary {
+      color: var(--text-dim);
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: #6E7681; text-decoration: none; }
+
+    /* ── SCREENSHOT CAPTION STRIP ── */
+    .hero-strip {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 24px 0;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .strip-item {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .strip-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .strip-dot-blue  { background: var(--blue); }
+    .strip-dot-green { background: var(--green); }
+    .strip-dot-amber { background: var(--amber); }
+
+    /* ── SECTION ── */
+    hr.divider { border: none; border-top: 1px solid var(--border); }
+    hr.divider-spaced { border: none; border-top: 1px solid var(--border); margin-top: 48px; }
+
+    .section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 72px 24px;
+    }
+    .section-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .section-sub {
+      font-size: 16px;
+      color: var(--text-mid);
+      max-width: 560px;
+      line-height: 1.65;
+    }
+
+    /* ── FEATURES GRID ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 48px;
+    }
+    .feature-card { background: var(--bg2); padding: 28px; }
+    .feature-icon { font-size: 22px; margin-bottom: 14px; }
+    .feature-title { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── DIALECTS ── */
+    .dialects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 40px;
+    }
+    .dialect-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .dialect-card.experimental {
+      border-color: rgba(227,179,65,0.3);
+      background: rgba(227,179,65,0.04);
+    }
+    .dialect-icon  { font-size: 24px; }
+    .dialect-name  { font-weight: 700; font-size: 15px; }
+    .dialect-status { font-family: var(--mono); font-size: 11px; color: var(--green); }
+    .dialect-card.experimental .dialect-status { color: var(--amber); }
+    .dialect-features { list-style: none; font-size: 13px; color: var(--text-dim); line-height: 1.8; }
+    .dialect-features li::before { content: "✓ "; color: var(--green); }
+    .dialect-card.experimental .dialect-features li::before { content: "~ "; color: var(--amber); }
+
+    /* ── DDL BLOCK ── */
+    .ddl-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 40px;
+    }
+    .ddl-topbar {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .ddl-tab { color: var(--text); font-weight: 600; border-bottom: 2px solid var(--blue); padding-bottom: 2px; }
+    .ddl-code {
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .kw  { color: #FF7B72; }
+    .fn  { color: #D2A8FF; }
+    .str { color: #A5D6FF; }
+    .cmt { color: #8B949E; font-style: italic; }
+    .ok  { color: var(--green); }
+
+    /* ── PRE-FLIGHT ── */
+    .preflight-list { display: flex; flex-direction: column; gap: 10px; margin-top: 32px; }
+    .preflight-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 14px;
+    }
+    .preflight-item.ok-item   { border-color: rgba(63,185,80,0.3); }
+    .preflight-item.warn-item { border-color: rgba(227,179,65,0.3); }
+    .preflight-item.err-item  { border-color: rgba(248,81,73,0.3); }
+    .pi-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .pi-body strong { display: block; font-weight: 600; margin-bottom: 2px; }
+    .pi-body span   { font-size: 13px; color: var(--text-dim); }
+
+    /* ── CHANGELOG ── */
+    .changelog {
+      margin-top: 48px;
+      display: flex; flex-direction: column; gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .cl-item {
+      background: var(--bg2);
+      padding: 22px 28px;
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) { .cl-item { grid-template-columns: 1fr; gap: 8px; } }
+    .cl-version { font-family: var(--mono); font-weight: 600; font-size: 14px; color: var(--blue); padding-top: 2px; }
+    .cl-version.latest { color: var(--amber); }
+    .cl-version-tag { font-size: 10px; display: block; margin-top: 2px; }
+    .cl-changes { font-size: 14px; color: var(--text-mid); line-height: 1.7; }
+    .cl-changes li { margin-left: 18px; margin-bottom: 4px; }
+
+    /* ── FAQ ── */
+    .faq-list {
+      margin-top: 40px;
+      display: flex; flex-direction: column; gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .faq-item { background: var(--bg2); padding: 22px 28px; }
+    .faq-q { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+    .faq-a { font-size: 14px; color: var(--text-dim); line-height: 1.65; }
+    .faq-a code {
+      font-family: var(--mono);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 12px;
+      color: var(--text-mid);
+    }
+
+    /* ── FOOTER CTA ── */
+    .footer-cta {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 72px 24px;
+      text-align: center;
+    }
+    .footer-cta h2 {
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .footer-cta p { font-size: 16px; color: var(--text-mid); margin-bottom: 28px; }
+    .footer-cta p.footnote {
+      margin-top: 20px;
+      margin-bottom: 0;
+      font-size: 13px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+    .footer-cta-actions { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+    /* ── SITE FOOTER ── */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+      gap: 12px;
+      max-width: 1100px;
+      margin: 0 auto;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .site-footer-brand { font-family: var(--mono); font-size: 12px; }
+    .site-footer-links { display: flex; gap: 20px; }
+    .site-footer a { color: var(--text-dim); }
+    .site-footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <div class="nav-logo">
+      <picture>
+        <source
+                srcset="./pluginIcon_dark.svg"
+                media="(prefers-color-scheme: dark)"
+        >
+        <img
+                src="./pluginIcon.svg"
+                alt="DB Blueprint"
+                class="nav-logo-icon"
+        >
+      </picture>
+
+      <span>DB Blueprint</span>
+    </div>
+
+    <div class="nav-badge">
+      <div class="nav-badge-dot"></div>
+      Early Access · v0.1.6
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="#dialects" class="nav-hide-sm">Dialects</a>
+    <a href="#changelog">Changelog</a>
+    <a
+            href="https://plugins.jetbrains.com/plugin/32090-db-blueprint"
+            class="nav-cta"
+            target="_blank"
+            rel="noopener"
+    >
+      Install Free →
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div>
+    <h1>Your database schema,<br><em>inside IntelliJ</em></h1>
+    <p class="hero-sub">Draw ERDs on a canvas, import from live databases, preview migration SQL, and apply incremental changes — without leaving your IDE.</p>
+    <div class="hero-actions">
+      <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint"
+         class="btn-primary"
+         target="_blank"
+         rel="noopener">
+        ⬇ Install from Marketplace
+      </a>
+      <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint/documentation"
+         class="btn-secondary"
+         target="_blank"
+         rel="noopener">
+      >
+        Documentation
+      </a>
+    </div>
+    <div class="hero-meta">
+      <span>Free</span> · PostgreSQL · MySQL · MariaDB · SQLite · MSSQL
+    </div>
+  </div>
+
+  <div class="hero-screenshot-wrap">
+    <img src="DBBLueprint_Main.png"
+         alt="DB Blueprint canvas — three tables connected with foreign keys, schema panel on the left, living schema toolbar at the top">
+  </div>
+</div>
+
+<div class="hero-strip">
+  <div class="strip-item"><div class="strip-dot strip-dot-blue"></div>Canvas with three connected tables</div>
+  <div class="strip-item"><div class="strip-dot strip-dot-green"></div>Schema panel with FK / REF badges</div>
+  <div class="strip-item"><div class="strip-dot strip-dot-amber"></div>Living schema — baseline captured</div>
+</div>
+
+<hr class="divider-spaced">
+
+<!-- FEATURES -->
+<div class="section" id="features">
+  <div class="section-label">Features</div>
+  <h2 class="section-title">Everything your schema needs, nothing it doesn't</h2>
+  <p class="section-sub">DB Blueprint stays out of your way. One tool window, your whole schema workflow.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🖼</div>
+      <div class="feature-title">Canvas editor</div>
+      <div class="feature-desc">Drag column handles to draw FK relationships. Edit table names, types, PK / NN / UNIQUE flags inline. Minimap and zoom keep large schemas navigable.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌿</div>
+      <div class="feature-title">Living schema</div>
+      <div class="feature-desc">Capture a baseline, then edit freely on the canvas. Preview the exact ALTER statements that will bring the database up to date — before running anything.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⬇️</div>
+      <div class="feature-title">Import from DB</div>
+      <div class="feature-desc">Reverse-engineer an existing database into the canvas over JDBC. Tables, columns, indexes, and foreign keys — including partial indexes — are all imported.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡</div>
+      <div class="feature-title">Pre-flight checks</div>
+      <div class="feature-desc">Before Apply, the plugin checks for NULL values in new NOT NULL columns, duplicates before UNIQUE, and orphaned FK rows — blocking the plan with a clear message instead of a raw database error.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">DDL preview</div>
+      <div class="feature-desc">Inspect the generated CREATE / ALTER SQL at any point. Copy to clipboard, review the diff before running. Resizable window, no surprises.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📂</div>
+      <div class="feature-title">Save as .dbdesign</div>
+      <div class="feature-desc">The canvas is a JSON file that lives in your project. Commit it alongside your code and open it on any machine. No external service, no account required.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MIGRATION DIFF -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">Migration diff</div>
+  <h2 class="section-title">Minimal ALTER, not DROP + CREATE</h2>
+  <p class="section-sub">The diff engine produces the smallest set of statements needed — column renames, type changes, index updates, FK actions. A table is never dropped and recreated when an ALTER will do.</p>
+
+  <div class="ddl-block">
+    <div class="ddl-topbar">
+      <span class="ddl-tab">Preview migration SQL</span>
+      <span>PostgreSQL</span>
+    </div>
+    <div class="ddl-code">
+      <span class="cmt">-- Step 1: New tables</span>
+      <span class="kw">CREATE TABLE</span> <span class="str">"audit_log"</span> (
+      <span class="str">"id"</span>         <span class="fn">bigserial</span>    <span class="kw">PRIMARY KEY</span>,
+      <span class="str">"user_id"</span>    <span class="fn">bigint</span>       <span class="kw">NOT NULL</span>,
+      <span class="str">"action"</span>     <span class="fn">varchar(128)</span> <span class="kw">NOT NULL</span>,
+      <span class="str">"created_at"</span> <span class="fn">timestamptz</span>  <span class="kw">DEFAULT</span> <span class="fn">now</span>()
+      );
+
+      <span class="cmt">-- Step 2: New columns on existing tables</span>
+      <span class="kw">ALTER TABLE</span> <span class="str">"orders"</span>
+      <span class="kw">ADD COLUMN</span> <span class="str">"updated_at"</span> <span class="fn">timestamptz</span>;
+
+      <span class="cmt">-- Step 3: New foreign keys</span>
+      <span class="kw">ALTER TABLE</span> <span class="str">"audit_log"</span>
+      <span class="kw">ADD CONSTRAINT</span> <span class="str">"fk_audit_log_user_id"</span>
+      <span class="kw">FOREIGN KEY</span> (<span class="str">"user_id"</span>) <span class="kw">REFERENCES</span> <span class="str">"users"</span>(<span class="str">"id"</span>)
+      <span class="kw">ON DELETE</span> <span class="ok">CASCADE</span>;
+    </div>
+  </div>
+</div>
+
+<!-- PRE-FLIGHT -->
+<hr class="divider">
+<div class="section">
+  <div class="section-label">Safety</div>
+  <h2 class="section-title">Know before you apply</h2>
+  <p class="section-sub">Pre-flight checks run against your live data before a single statement executes. A clear message explains what is wrong and how to fix it — not a raw database error.</p>
+
+  <div class="preflight-list">
+    <div class="preflight-item ok-item">
+      <div class="pi-icon">✅</div>
+      <div class="pi-body">
+        <strong>New tables</strong>
+        <span>3 tables to create — no conflicts detected.</span>
+      </div>
+    </div>
+    <div class="preflight-item warn-item">
+      <div class="pi-icon">⚠️</div>
+      <div class="pi-body">
+        <strong>NOT NULL on orders.notes — 142 existing rows have NULL</strong>
+        <span>Set a DEFAULT or backfill before marking this column required. Apply is blocked until resolved.</span>
+      </div>
+    </div>
+    <div class="preflight-item ok-item">
+      <div class="pi-icon">✅</div>
+      <div class="pi-body">
+        <strong>UNIQUE on users.email</strong>
+        <span>0 duplicate values found — safe to apply.</span>
+      </div>
+    </div>
+    <div class="preflight-item err-item">
+      <div class="pi-icon">🚫</div>
+      <div class="pi-body">
+        <strong>FK audit_log.user_id → users.id — 7 orphaned rows</strong>
+        <span>Some user_id values have no matching parent in users. Fix the data or the relation before proceeding.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIALECTS -->
+<hr class="divider">
+<div class="section" id="dialects">
+  <div class="section-label">Dialects</div>
+  <h2 class="section-title">Five databases, one canvas</h2>
+  <p class="section-sub">Each dialect is implemented independently against the engine's own documentation — not adapted from another dialect's SQL.</p>
+
+  <div class="dialects-grid">
+    <div class="dialect-card">
+      <div class="dialect-icon">🐘</div>
+      <div class="dialect-name">PostgreSQL</div>
+      <div class="dialect-status">Production-ready</div>
+      <ul class="dialect-features">
+        <li>Import · Export · Migration</li>
+        <li>Partial indexes</li>
+        <li>Online migration option</li>
+        <li>Transactional DDL rollback</li>
+      </ul>
+    </div>
+    <div class="dialect-card">
+      <div class="dialect-icon">🐬</div>
+      <div class="dialect-name">MySQL</div>
+      <div class="dialect-status">Production-ready</div>
+      <ul class="dialect-features">
+        <li>Import · Export · Migration</li>
+        <li>BTREE / FULLTEXT / SPATIAL</li>
+        <li>Prefix indexes</li>
+        <li>DDL warning on no rollback</li>
+      </ul>
+    </div>
+    <div class="dialect-card">
+      <div class="dialect-icon">🐳</div>
+      <div class="dialect-name">MariaDB</div>
+      <div class="dialect-status">Production-ready</div>
+      <ul class="dialect-features">
+        <li>Import · Export · Migration</li>
+        <li>Same coverage as MySQL</li>
+        <li>Server version detection</li>
+      </ul>
+    </div>
+    <div class="dialect-card">
+      <div class="dialect-icon">💾</div>
+      <div class="dialect-name">SQLite</div>
+      <div class="dialect-status">Production-ready</div>
+      <ul class="dialect-features">
+        <li>Import · Export · Migration</li>
+        <li>Table-rebuild migrations</li>
+        <li>Partial indexes</li>
+      </ul>
+    </div>
+    <div class="dialect-card experimental">
+      <div class="dialect-icon">💻</div>
+      <div class="dialect-name">MSSQL</div>
+      <div class="dialect-status">Preview (experimental)</div>
+      <ul class="dialect-features">
+        <li>Connect · Import · DDL preview</li>
+        <li>Apply migration — not yet ready</li>
+        <li>Use staging DB only</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGELOG -->
+<hr class="divider">
+<div class="section" id="changelog">
+  <div class="section-label">Changelog</div>
+  <h2 class="section-title">Shipping fast</h2>
+  <p class="section-sub">DB Blueprint is in active development. Every release brings meaningful improvements based on real use.</p>
+
+  <div class="changelog">
+    <div class="cl-item">
+      <div class="cl-version latest">v0.1.6 <span class="cl-version-tag">Latest</span></div>
+      <ul class="cl-changes">
+        <li>Connection status is now explicit — no more silent reconnects to the last profile</li>
+        <li>Safer migrations across all dialects: pre-flight checks block bad plans with a clear message before any SQL runs</li>
+        <li>SQLite gets the same data safety checks as other dialects</li>
+        <li>MySQL / MariaDB: new checks in Preview for index length and FK column mismatch</li>
+        <li>Preview and migration are now one unified window — review SQL and apply side by side</li>
+        <li>PostgreSQL: optional Online migration adds FK without a write-blocking lock</li>
+      </ul>
+    </div>
+    <div class="cl-item">
+      <div class="cl-version">v0.1.5</div>
+      <ul class="cl-changes">
+        <li>MySQL and MariaDB: full import, canvas editing, migration preview, and Apply</li>
+        <li>Index editing on canvas — BTREE, FULLTEXT, SPATIAL, prefix indexes</li>
+        <li>Migration diff includes renames, type changes, NOT NULL / UNIQUE / FK action updates</li>
+      </ul>
+    </div>
+    <div class="cl-item">
+      <div class="cl-version">v0.1.4</div>
+      <ul class="cl-changes">
+        <li>PostgreSQL: full JDBC import, migration, and Apply with transactional rollback</li>
+        <li>Partial indexes imported and shown on canvas</li>
+        <li>Schema sidebar: collapse to icons, hover highlight between panel and canvas</li>
+      </ul>
+    </div>
+    <div class="cl-item">
+      <div class="cl-version">v0.1.1–0.1.3</div>
+      <ul class="cl-changes">
+        <li>Initial Marketplace release with visual canvas, schema sidebar, and relationship editing</li>
+        <li>SQLite import and migration</li>
+        <li>MSSQL migration preview (experimental)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<hr class="divider">
+<div class="section" id="faq">
+  <div class="section-label">FAQ</div>
+  <h2 class="section-title">Common questions</h2>
+
+  <div class="faq-list">
+    <div class="faq-item">
+      <div class="faq-q">Do I need DataGrip or the Database plugin?</div>
+      <div class="faq-a">No. DB Blueprint uses its own JDBC connection and works in IntelliJ IDEA Community Edition and any other JetBrains IDE. The Database plugin is not required.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How do I connect to my database?</div>
+      <div class="faq-a">Open <code>Settings → Tools → DB Blueprint</code>, fill in host / port / database / user, point to your JDBC driver jar, and click <strong>Test connection</strong>. The plugin can auto-detect drivers already installed by your IDE, or download one from Maven Central with the <strong>Download</strong> button.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Are JDBC drivers included?</div>
+      <div class="faq-a">No — drivers are not bundled. Use <strong>Detect</strong> (finds drivers from any installed JetBrains product on your machine), <strong>Download</strong> (fetches from Maven Central), or point to your own <code>.jar</code> file.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Where are passwords stored?</div>
+      <div class="faq-a">In IntelliJ Password Safe — the same place your IDE stores all other credentials. Passwords are never written to the <code>.dbdesign</code> file or any project XML.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is it safe to use on a production database?</div>
+      <div class="faq-a">The Preview migration flow — baseline → diff → pre-flight checks → Apply — is designed for production use on PostgreSQL, MySQL, MariaDB, and SQLite. MSSQL is experimental; use a staging database there. Always review the SQL in Preview before applying.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is the plugin free?</div>
+      <div class="faq-a">Yes, completely free. No account, no usage limits, no paid tier.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER CTA -->
+<div class="footer-cta">
+  <h2>Install in 30 seconds</h2>
+  <p>Settings → Plugins → search "DB Blueprint" → Install. Or use the button below.</p>
+  <div class="footer-cta-actions">
+    <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint" class="btn-primary btn-primary-lg">
+      ⬇ Install from JetBrains Marketplace
+    </a>
+    <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint/documentation" class="btn-secondary">
+      Documentation
+    </a>
+  </div>
+  <p class="footnote">Free · No account required</p>
+</div>
+
+<footer class="site-footer">
+  <div class="site-footer-brand">DB Blueprint</div>
+  <div class="site-footer-links">
+    <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint">Marketplace</a>
+    <a href="https://plugins.jetbrains.com/plugin/32090-db-blueprint/documentation">Docs</a>
+    <a href="https://github.com/projectdashboard-2025/db-blueprint-plugin-jetbrains">Report issues</a>
+  </div>
+</footer>
+
+</body>
+</html>
